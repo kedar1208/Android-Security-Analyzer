@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>APKWatchtower — Security watch for Android APKs</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%2314201b'/%3E%3Cpath d='M32 10 47 46H17Z' fill='none' stroke='%23efe8d8' stroke-width='3'/%3E%3Cpath d='M22 46 26 34h12l4 12' fill='none' stroke='%23efe8d8' stroke-width='3'/%3E%3Ccircle cx='32' cy='16' r='4.5' fill='%23f5a83c'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,350;9..144,500;9..144,600;9..144,700;9..144,900&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --ink:#0b100d; --ink2:#0e1512; --panel:rgba(22,32,27,.86); --panel-soft:rgba(22,32,27,.55);
+  --raised:#1c2921; --line:rgba(219,199,148,.14); --line-strong:rgba(245,168,60,.4);
+  --paper:#efe8d8; --paper-dim:#cfc7ae; --muted:#8b9689;
+  --beacon:#f5a83c; --beacon-deep:#d9821f; --ember:#e35a34; --moss:#7fa37a; --dusk:#5b8aa6;
+  --serif:"Fraunces",Georgia,serif; --sans:"IBM Plex Sans",ui-sans-serif,system-ui,sans-serif; --mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+::selection{background:rgba(245,168,60,.3);color:#fff}
+body{
+  margin:0;min-height:100vh;color:var(--paper);font-family:var(--sans);
+  background:var(--ink);position:relative;overflow-x:hidden;
+}
+body::before{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.5;
+  background-image:
+    radial-gradient(700px 420px at 8% -8%, rgba(245,168,60,.09), transparent 60%),
+    radial-gradient(650px 460px at 96% 8%, rgba(127,163,122,.08), transparent 62%),
+    linear-gradient(180deg,var(--ink) 0%,var(--ink2) 100%);
+}
+.grain{position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.05;mix-blend-mode:overlay}
+.wrap{width:min(1320px,calc(100% - 40px));margin:auto;position:relative;z-index:1}
+
+/* ---------- Nav ---------- */
+.topbar{position:sticky;top:0;z-index:60;border-bottom:1px solid var(--line);background:rgba(11,16,13,.78);backdrop-filter:blur(16px)}
+.nav-inner{min-height:72px;display:flex;align-items:center;justify-content:space-between;gap:20px}
+.brand{display:flex;align-items:center;gap:12px;min-width:0;text-decoration:none;color:inherit}
+.tower-mark{flex:none;width:38px;height:38px}
+.brand-word{font-family:var(--serif);font-weight:600;font-size:18px;letter-spacing:-.01em;color:var(--paper)}
+.brand-word b{color:var(--beacon);font-weight:600}
+.nav-links{display:flex;align-items:center;gap:28px}
+.nav-links a{color:var(--paper-dim);text-decoration:none;font-size:13.5px;font-weight:500;position:relative;padding:4px 0}
+.nav-links a:after{content:"";position:absolute;left:0;right:100%;bottom:-2px;height:1px;background:var(--beacon);transition:right .22s ease}
+.nav-links a:hover{color:var(--paper)}
+.nav-links a:hover:after{right:0}
+.beacon-pill{display:inline-flex;align-items:center;gap:9px;border:1px solid rgba(245,168,60,.3);background:rgba(245,168,60,.07);color:#ffd9a0;border-radius:999px;padding:7px 13px;font-size:12px;font-weight:600;white-space:nowrap}
+.beacon-dot{width:7px;height:7px;border-radius:50%;background:var(--beacon);box-shadow:0 0 0 0 rgba(245,168,60,.6);animation:beacon-pulse 2.2s ease-out infinite}
+@keyframes beacon-pulse{0%{box-shadow:0 0 0 0 rgba(245,168,60,.55)}70%{box-shadow:0 0 0 8px rgba(245,168,60,0)}100%{box-shadow:0 0 0 0 rgba(245,168,60,0)}}
+
+/* ---------- Hero ---------- */
+.hero{padding:64px 0 46px;position:relative}
+.contour{position:absolute;top:-40px;right:-8%;width:62%;max-width:720px;opacity:.5;pointer-events:none;z-index:0}
+.hero-grid{display:grid;grid-template-columns:1.32fr .82fr;gap:34px;position:relative;z-index:1}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:12px;letter-spacing:.06em;color:var(--beacon);font-weight:600;font-family:var(--mono)}
+.eyebrow .rule{width:22px;height:1px;background:var(--beacon)}
+.hero h1{font-family:var(--serif);font-weight:600;font-size:clamp(2.5rem,4.6vw,4.1rem);line-height:1.03;letter-spacing:-.02em;margin:18px 0 20px;max-width:15ch}
+.hero h1 em{font-style:italic;font-weight:500;color:var(--beacon)}
+.hero p.lede{font-size:16px;line-height:1.75;color:var(--paper-dim);max-width:52ch;margin:0 0 28px}
+.hero-actions{display:flex;align-items:center;gap:22px;flex-wrap:wrap}
+.btn-beacon{
+  display:inline-flex;align-items:center;gap:9px;border:0;border-radius:10px;padding:13px 22px;
+  background:linear-gradient(155deg,var(--beacon),var(--beacon-deep));color:#231400;font-weight:700;font-size:14px;
+  text-decoration:none;box-shadow:0 14px 34px rgba(217,130,31,.22);transition:transform .18s ease,box-shadow .18s ease;cursor:pointer
+}
+.btn-beacon:hover{transform:translateY(-2px);box-shadow:0 18px 40px rgba(217,130,31,.32);color:#231400}
+.hero-stat{font-family:var(--mono);font-size:12.5px;color:var(--muted)}
+.hero-stat b{color:var(--paper);font-size:15px;font-family:var(--sans);font-weight:700}
+
+/* signal timeline card */
+.signal-card{
+  border:1px solid var(--line);border-radius:18px;background:linear-gradient(165deg,rgba(28,41,33,.9),rgba(15,22,18,.9));
+  padding:26px 24px;position:relative;overflow:hidden
+}
+.signal-card:before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 85% 0%,rgba(245,168,60,.1),transparent 55%);pointer-events:none}
+.signal-title{font-family:var(--mono);font-size:11px;letter-spacing:.08em;color:var(--muted);margin-bottom:18px;text-transform:uppercase}
+.signal-steps{list-style:none;margin:0;padding:0;position:relative}
+.signal-steps:before{content:"";position:absolute;left:9px;top:8px;bottom:8px;width:1px;background:linear-gradient(180deg,var(--beacon),transparent 92%)}
+.signal-step{display:flex;gap:16px;padding:0 0 26px;position:relative}
+.signal-step:last-child{padding-bottom:0}
+.lamp{width:19px;height:19px;border-radius:50%;flex:none;border:1px solid var(--line-strong);background:var(--raised);display:grid;place-items:center;position:relative;z-index:1}
+.lamp:after{content:"";width:7px;height:7px;border-radius:50%;background:var(--muted)}
+.signal-step.lit .lamp{border-color:var(--beacon)}
+.signal-step.lit .lamp:after{background:var(--beacon);box-shadow:0 0 10px 2px rgba(245,168,60,.7)}
+.signal-step-name{font-weight:650;font-size:14.5px}
+.signal-step-desc{font-size:12px;color:var(--muted);margin-top:2px;line-height:1.55}
+.signal-step.lit .signal-step-name{color:var(--beacon)}
+
+/* ---------- Panels & general ---------- */
+main{padding-bottom:80px}
+.panel{
+  background:var(--panel);border:1px solid var(--line);border-radius:18px;
+  box-shadow:0 20px 60px rgba(0,0,0,.28);
+}
+.panel-pad{padding:28px}
+.reveal{opacity:0;transform:translateY(18px);transition:opacity .6s ease,transform .6s ease}
+.reveal.in{opacity:1;transform:none}
+@media(prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none;transition:none}}
+
+.section-kicker{display:flex;align-items:baseline;gap:12px;margin-bottom:22px}
+.section-kicker h2{font-family:var(--serif);font-weight:600;font-size:26px;letter-spacing:-.01em;margin:0}
+.section-kicker .num{font-family:var(--mono);color:var(--beacon);font-size:13px}
+.section-note{color:var(--muted);font-size:12.5px;margin-top:-14px;margin-bottom:22px}
+
+/* ---------- Scan bay / upload ---------- */
+.scan-bay{padding:30px;margin-top:14px}
+.dropzone{
+  min-height:250px;border-radius:16px;position:relative;padding:34px 20px;
+  display:flex;align-items:center;justify-content:center;text-align:center;
+  background:radial-gradient(circle at 50% 30%,rgba(245,168,60,.05),transparent 60%),rgba(9,13,11,.5);
+  transition:.2s ease
+}
+.dropzone .corner{position:absolute;width:26px;height:26px;border-color:rgba(245,168,60,.55);transition:.2s ease}
+.dropzone .c-tl{top:14px;left:14px;border-top:2px solid;border-left:2px solid;border-radius:6px 0 0 0}
+.dropzone .c-tr{top:14px;right:14px;border-top:2px solid;border-right:2px solid;border-radius:0 6px 0 0}
+.dropzone .c-bl{bottom:14px;left:14px;border-bottom:2px solid;border-left:2px solid;border-radius:0 0 0 6px}
+.dropzone .c-br{bottom:14px;right:14px;border-bottom:2px solid;border-right:2px solid;border-radius:0 0 6px 0}
+.dropzone.drag .corner{border-color:var(--beacon);transform:scale(1.06)}
+.dropzone.drag{background:radial-gradient(circle at 50% 30%,rgba(245,168,60,.12),transparent 60%),rgba(9,13,11,.6)}
+.scan-line{position:absolute;left:16px;right:16px;height:2px;background:linear-gradient(90deg,transparent,rgba(245,168,60,.75),transparent);top:20%;animation:scanmove 3.4s ease-in-out infinite;opacity:.85}
+@keyframes scanmove{0%,100%{top:18%}50%{top:80%}}
+.drop-content{position:relative;z-index:1}
+.upload-icon{width:60px;height:60px;margin:0 auto 16px;border-radius:50%;display:grid;place-items:center;color:var(--beacon);font-size:24px;background:rgba(245,168,60,.08);border:1px solid rgba(245,168,60,.24)}
+.drop-title{font-family:var(--serif);font-size:19px;font-weight:600;margin-bottom:6px}
+.drop-copy{color:var(--muted);font-size:12.5px;margin-bottom:18px}
+.browse-btn{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;border-radius:9px;border:1px solid var(--line-strong);background:rgba(245,168,60,.09);color:#ffdfa8;font-size:12.5px;font-weight:650;cursor:pointer}
+.browse-btn:hover{background:rgba(245,168,60,.15)}
+.file-ready{display:none;margin-top:16px;padding:12px 14px;border:1px solid rgba(127,163,122,.3);background:rgba(127,163,122,.08);border-radius:11px;align-items:center;gap:10px;text-align:left}
+.file-ready i{color:var(--moss);font-size:18px}
+.file-meta{min-width:0;flex:1}.file-name{font-size:12.5px;font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--mono)}
+.file-size{font-size:10.5px;color:var(--muted);margin-top:2px}
+.icon-btn{border:0;background:transparent;color:var(--muted);font-size:16px;padding:5px}.icon-btn:hover{color:var(--paper)}
+
+.options-row{display:grid;grid-template-columns:1fr auto;gap:16px;align-items:end;margin-top:20px}
+.mode-card{padding:16px;border:1px solid var(--line);border-radius:13px;background:rgba(255,255,255,.02)}
+.mode-title{font-family:var(--mono);font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:11px}
+.mode-options{display:flex;gap:9px;flex-wrap:wrap}
+.mode-pill{display:flex;align-items:center;gap:8px;padding:11px 13px;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.02);cursor:pointer;flex:1;min-width:190px;transition:.15s}
+.mode-pill:has(input:checked){border-color:rgba(245,168,60,.55);background:rgba(245,168,60,.07)}
+.mode-pill input{accent-color:var(--beacon)}
+.mode-main{font-size:12.5px;font-weight:700}.mode-desc{font-size:10.5px;color:var(--muted);margin-top:2px}
+.analyze-btn{min-width:190px;border:0;border-radius:12px;padding:14px 18px;color:#231400;font-size:13px;font-weight:800;letter-spacing:.01em;background:linear-gradient(135deg,var(--beacon),var(--beacon-deep));box-shadow:0 12px 30px rgba(217,130,31,.22);transition:.2s}
+.analyze-btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 16px 36px rgba(217,130,31,.3)}
+.analyze-btn:disabled{opacity:.4;cursor:not-allowed}
+
+.status{display:none;margin-top:14px;padding:12px 14px;border-radius:11px;border:1px solid var(--line);font-size:12px}
+.status.info{display:flex;background:rgba(91,138,166,.08);border-color:rgba(91,138,166,.25);color:#b9dcef}
+.status.ok{display:flex;background:rgba(127,163,122,.08);border-color:rgba(127,163,122,.28);color:#c3ecb9}
+.status.err{display:flex;background:rgba(227,90,52,.08);border-color:rgba(227,90,52,.28);color:#ffc0ad}
+
+.progress-panel{display:none;margin-top:20px;padding:26px}
+.progress-layout{display:grid;grid-template-columns:130px 1fr;gap:24px;align-items:center}
+.loader-ring{width:104px;height:104px;border-radius:50%;border:2px solid rgba(245,168,60,.15);border-top-color:var(--beacon);border-right-color:var(--ember);animation:spin 1.15s linear infinite;margin:auto;display:grid;place-items:center}
+.loader-ring i{font-size:23px;color:var(--beacon);animation:pulse 1.5s ease-in-out infinite}
+@keyframes spin{to{transform:rotate(360deg)}} @keyframes pulse{50%{opacity:.4;transform:scale(.92)}}
+.progress-title{font-family:var(--serif);font-size:17px;font-weight:600;margin-bottom:5px}
+.progress-copy{font-size:12px;color:var(--muted);margin-bottom:15px}
+.indeterminate{height:5px;border-radius:99px;overflow:hidden;background:var(--raised);position:relative}
+.indeterminate:before{content:"";position:absolute;width:38%;height:100%;left:-40%;background:linear-gradient(90deg,transparent,var(--beacon),var(--ember),transparent);animation:slide 1.25s ease-in-out infinite}
+@keyframes slide{to{left:105%}}
+.real-progress{display:none;margin-top:13px}.real-progress-top{display:flex;justify-content:space-between;font-size:10.5px;color:var(--muted);margin-bottom:7px;font-family:var(--mono)}
+.real-progress-bar{height:6px;background:var(--raised);border-radius:99px;overflow:hidden}
+.real-progress-fill{height:100%;width:0;background:linear-gradient(90deg,var(--beacon-deep),var(--beacon));transition:width .18s ease}
+
+/* ---------- Empty / results ---------- */
+.empty{padding:58px 20px;text-align:center;color:var(--muted)}
+.empty-icon{width:60px;height:60px;border:1px solid var(--line);border-radius:50%;display:grid;place-items:center;margin:0 auto 15px;color:var(--beacon);font-size:22px}
+.empty strong{display:block;color:var(--paper);font-family:var(--serif);font-size:17px;font-weight:600;margin-bottom:7px}
+.empty p{font-size:12px;margin:0 auto;max-width:390px;line-height:1.7}
+
+.results{display:none}
+.detail-head{padding:26px;margin-bottom:20px}
+.detail-top{display:flex;justify-content:space-between;gap:18px;align-items:flex-start;flex-wrap:wrap}
+.app-name{font-family:var(--serif);font-size:22px;font-weight:600}
+.app-meta{color:var(--muted);font-size:11.5px;margin-top:6px;line-height:1.7;font-family:var(--mono)}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.action-btn{border:1px solid var(--line);background:rgba(255,255,255,.02);color:var(--paper-dim);border-radius:9px;padding:9px 12px;font-size:11px;font-weight:650;text-decoration:none}
+.action-btn:hover{background:rgba(245,168,60,.08);color:var(--paper);border-color:var(--line-strong)}
+
+.overview-grid{display:grid;grid-template-columns:240px 1fr;gap:24px;margin-top:24px}
+.score-card{border:1px solid var(--line);border-radius:15px;background:rgba(255,255,255,.015);padding:22px;text-align:center}
+.score-ring{position:relative;width:168px;height:168px;margin:0 auto 10px}.score-ring canvas{width:168px!important;height:168px!important}
+.score-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.score-number{font-family:var(--serif);font-size:38px;font-weight:700;line-height:1}
+.score-label{font-size:9px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-top:4px;font-family:var(--mono)}
+.rating{font-size:12px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;font-family:var(--mono)}
+.stats-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:9px}
+.stat{padding:14px 10px;border:1px solid var(--line);border-radius:11px;background:rgba(255,255,255,.015)}
+.stat-num{font-family:var(--serif);font-size:22px;font-weight:700}
+.stat-label{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-top:3px;font-family:var(--mono)}
+.mini-chart{margin-top:16px;height:180px}
+
+.section{padding:26px;margin-bottom:20px}
+.section-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap}
+.section-title{font-family:var(--serif);font-size:17px;font-weight:600;display:flex;align-items:center;gap:9px}
+.section-title i{color:var(--beacon);font-size:16px}
+.filters{display:flex;gap:7px;flex-wrap:wrap}
+.form-control,.form-select{background:#0c1310!important;border-color:var(--line)!important;color:var(--paper)!important;font-size:11.5px}
+.form-control:focus,.form-select:focus{box-shadow:0 0 0 2px rgba(245,168,60,.14)!important;border-color:rgba(245,168,60,.5)!important}
+
+.module-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:11px}
+.module{padding:16px;border:1px solid var(--line);border-radius:13px;background:rgba(255,255,255,.015);transition:.18s;position:relative}
+.module:hover{border-color:var(--line-strong);transform:translateY(-2px)}
+.module-post{position:absolute;top:14px;right:14px;font-family:var(--mono);font-size:10px;color:var(--muted)}
+.module-icon{font-size:18px;color:var(--beacon);margin-bottom:10px}
+.module-name{font-size:12px;font-weight:750}
+.module-desc{font-size:9.5px;color:var(--muted);line-height:1.55;margin-top:4px}
+.module-count{font-size:9.5px;color:var(--moss);margin-top:11px;font-family:var(--mono)}
+
+.findings-list{display:grid;gap:9px}
+.finding{border:1px solid var(--line);border-radius:13px;background:rgba(255,255,255,.012);overflow:hidden}
+.finding summary{list-style:none;cursor:pointer;padding:16px;display:grid;grid-template-columns:82px 1fr auto;gap:12px;align-items:center}
+.finding summary::-webkit-details-marker{display:none}
+.finding:hover{border-color:rgba(219,199,148,.28)}
+.finding-title{font-size:12.5px;font-weight:700}
+.finding-cat{font-size:9.5px;color:var(--muted);margin-top:3px;font-family:var(--mono)}
+.finding-chevron{color:var(--muted);transition:.15s}.finding[open] .finding-chevron{transform:rotate(180deg)}
+.sev{display:inline-flex;justify-content:center;min-width:68px;padding:5px 8px;border-radius:999px;font-size:9px;font-weight:800;letter-spacing:.03em;font-family:var(--mono)}
+.sev-Critical{background:rgba(227,90,52,.14);color:#ffab8b;border:1px solid rgba(227,90,52,.28)}
+.sev-High{background:rgba(217,130,31,.14);color:#ffc981;border:1px solid rgba(217,130,31,.28)}
+.sev-Medium{background:rgba(245,168,60,.13);color:#ffd996;border:1px solid rgba(245,168,60,.26)}
+.sev-Low{background:rgba(91,138,166,.14);color:#a9d3e8;border:1px solid rgba(91,138,166,.28)}
+.sev-Info{background:rgba(139,150,137,.12);color:#c1c9bd;border:1px solid rgba(139,150,137,.24)}
+.finding-body{padding:0 16px 17px 110px;color:var(--paper-dim);font-size:12px;line-height:1.75}
+.evidence{margin-top:11px;padding:11px;border-radius:9px;background:#070b09;border:1px solid var(--line);font:11px/1.6 var(--mono);color:#b7c4b0;white-space:pre-wrap;word-break:break-word}
+.fix{margin-top:10px;padding:10px 11px;border-left:2px solid var(--moss);background:rgba(127,163,122,.06);color:#c3ecb9}
+
+.history-wrap{overflow:auto}
+.history{width:100%;min-width:650px;border-collapse:collapse}
+.history th{text-align:left;color:var(--muted);font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;font-weight:700;padding:11px 10px;border-bottom:1px solid var(--line);font-family:var(--mono)}
+.history td{padding:13px 10px;border-bottom:1px solid rgba(219,199,148,.08);font-size:12px}
+.history tbody tr{cursor:pointer;transition:.12s}
+.history tbody tr:hover{background:rgba(245,168,60,.04)}
+.app-cell{font-weight:700}.app-cell small{display:block;color:var(--muted);font-size:9.5px;margin-top:2px;font-family:var(--mono)}
+.risk-pill{font-size:9px;font-weight:800;padding:4px 9px;border-radius:999px;font-family:var(--mono)}
+.delete-btn{border:0;background:transparent;color:#66735f;padding:5px}.delete-btn:hover{color:var(--ember)}
+
+.toastish{position:fixed;right:22px;bottom:22px;z-index:100;padding:12px 15px;border:1px solid var(--line-strong);border-radius:11px;background:#111a15;box-shadow:0 15px 45px rgba(0,0,0,.4);font-size:12px;display:none}
+
+footer.site-foot{padding:38px 0 20px;text-align:center;color:var(--muted);font-size:11.5px;border-top:1px solid var(--line);margin-top:20px}
+footer.site-foot .tower-mini{width:20px;height:20px;opacity:.6;margin-bottom:8px}
+
+@media(max-width:1000px){
+  .hero-grid{grid-template-columns:1fr}.contour{display:none}
+  .overview-grid{grid-template-columns:1fr}.module-grid{grid-template-columns:repeat(2,1fr)}
+  .nav-links{display:none}
+}
+@media(max-width:700px){
+  .wrap{width:min(100% - 22px,1400px)}.nav-inner{min-height:64px}
+  .hero{padding:38px 0 28px}
+  .hero-copy,.scan-bay,.detail-head,.section,.progress-panel,.panel-pad{padding:18px}
+  .options-row{grid-template-columns:1fr}.analyze-btn{width:100%}
+  .progress-layout{grid-template-columns:1fr;text-align:center}
+  .stats-grid{grid-template-columns:repeat(2,1fr)}.module-grid{grid-template-columns:1fr}
+  .detail-top{flex-direction:column}.actions{width:100%}.action-btn{flex:1;text-align:center}
+  .finding summary{grid-template-columns:1fr auto}.finding summary .sev{justify-self:start}.finding-body{padding:0 16px 17px}
+  .filters{width:100%;flex-direction:column}.section-head{align-items:flex-start;flex-direction:column}
+}
+@media(prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  .dropzone,.module,.analyze-btn,.beacon-dot,.scan-line,.loader-ring,.loader-ring i,.indeterminate:before{animation:none;transition:none}
+}
+</style>
+</head>
+<body>
+<svg class="grain" width="0" height="0">
+  <filter id="noise"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" stitchTiles="stitch"/></filter>
+</svg>
+
+<header class="topbar">
+  <div class="wrap nav-inner">
+    <a href="#top" class="brand">
+      <svg class="tower-mark" viewBox="0 0 64 64" fill="none">
+        <path d="M32 8 48 46H16Z" stroke="#efe8d8" stroke-width="3" stroke-linejoin="round"/>
+        <path d="M21 46 25.5 33h13L43 46" stroke="#efe8d8" stroke-width="3" stroke-linejoin="round"/>
+        <path d="M27 46 29 39h6l2 7" stroke="#efe8d8" stroke-width="2.4" stroke-linejoin="round"/>
+        <circle cx="32" cy="15" r="4.4" fill="#f5a83c"/>
+      </svg>
+      <span class="brand-word">APK<b>Watchtower</b></span>
+    </a>
+    <nav class="nav-links">
+      <a href="#scan">Scan</a>
+      <a href="#modules">Watch posts</a>
+      <a href="#history">Logbook</a>
+    </nav>
+    <div class="beacon-pill"><span class="beacon-dot"></span> Watching</div>
+  </div>
+</header>
+
+<main id="top">
+<div class="wrap">
+
+  <section class="hero">
+    <svg class="contour" viewBox="0 0 500 420" fill="none">
+      <g stroke="#f5a83c" stroke-opacity=".55" stroke-width="1">
+        <path d="M20 340 Q120 300 180 330 T340 310 Q420 300 470 250"/>
+        <path d="M0 280 Q110 240 190 270 T360 240 Q440 230 490 190" stroke-opacity=".4"/>
+        <path d="M-10 220 Q120 180 210 210 T380 175 Q450 165 500 130" stroke-opacity=".28"/>
+        <path d="M0 160 Q140 120 230 150 T400 110" stroke-opacity=".18"/>
+      </g>
+      <circle cx="405" cy="96" r="3" fill="#f5a83c"/>
+      <circle cx="405" cy="96" r="34" stroke="#f5a83c" stroke-opacity=".3"/>
+      <circle cx="405" cy="96" r="60" stroke="#f5a83c" stroke-opacity=".14"/>
+    </svg>
+
+    <div class="hero-grid">
+      <div class="hero-copy">
+        <span class="eyebrow"><span class="rule"></span>PS02 · APK security desk</span>
+        <h1>Stand watch over<br>every APK <em>before it ships.</em></h1>
+        <p class="lede">Upload an APK and APKWatchtower surveys manifest exposure, hardcoded secrets, network security, storage and logging habits, cryptography, and — with a booted emulator — runtime behaviour, then hands back one clear risk reading.</p>
+        <div class="hero-actions">
+          <a href="#scan" class="btn-beacon"><i class="bi bi-binoculars"></i> Begin a scan</a>
+          <span class="hero-stat"><b>7</b> watch posts covering the release pipeline</span>
+        </div>
+      </div>
+
+      <div class="signal-card">
+        <div class="signal-title">How a watch runs</div>
+        <ul class="signal-steps" id="signalSteps">
+          <li class="signal-step"><span class="lamp"></span><div><div class="signal-step-name">Upload</div><div class="signal-step-desc">Drop the .apk into the scan bay.</div></div></li>
+          <li class="signal-step"><span class="lamp"></span><div><div class="signal-step-name">Survey</div><div class="signal-step-desc">Seven modules inspect the package in sequence.</div></div></li>
+          <li class="signal-step"><span class="lamp"></span><div><div class="signal-step-name">Score</div><div class="signal-step-desc">Findings are weighted into a 0–100 risk reading.</div></div></li>
+          <li class="signal-step"><span class="lamp"></span><div><div class="signal-step-name">Report</div><div class="signal-step-desc">Read it on screen, or export HTML/PDF.</div></div></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section id="scan" class="panel scan-bay reveal">
+    <div class="section-kicker"><span class="num">01</span><h2>The scan bay</h2></div>
+    <div id="dropzone" class="dropzone">
+      <div class="scan-line"></div>
+      <span class="corner c-tl"></span><span class="corner c-tr"></span><span class="corner c-bl"></span><span class="corner c-br"></span>
+      <div class="drop-content">
+        <div class="upload-icon"><i class="bi bi-cloud-arrow-up"></i></div>
+        <div class="drop-title">Drop an APK to begin</div>
+        <div class="drop-copy">Drag and drop an Android package, or browse from your device.</div>
+        <label class="browse-btn" for="fileInput"><i class="bi bi-folder2-open"></i> Browse APK</label>
+        <input type="file" id="fileInput" accept=".apk" hidden>
+        <div id="fileReady" class="file-ready">
+          <i class="bi bi-check-circle-fill"></i>
+          <div class="file-meta">
+            <div id="fileName" class="file-name">-</div>
+            <div id="fileSize" class="file-size">-</div>
+          </div>
+          <button id="removeFile" class="icon-btn" type="button" aria-label="Remove selected APK"><i class="bi bi-x-lg"></i></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="options-row">
+      <div class="mode-card">
+        <div class="mode-title">Analysis mode</div>
+        <div class="mode-options">
+          <label class="mode-pill">
+            <input type="radio" name="analysisMode" value="static" checked>
+            <div><div class="mode-main">Static analysis</div><div class="mode-desc">Manifest · secrets · network · storage · crypto</div></div>
+          </label>
+          <label class="mode-pill">
+            <input type="radio" name="analysisMode" value="dynamic">
+            <div><div class="mode-main">Static + dynamic</div><div class="mode-desc">Adds runtime logcat analysis</div></div>
+          </label>
+        </div>
+        <div class="mode-desc mt-2"><i class="bi bi-info-circle me-1"></i> Dynamic analysis requires a connected and booted Android emulator.</div>
+      </div>
+      <button id="analyzeBtn" class="analyze-btn" disabled><i class="bi bi-binoculars me-1"></i> Analyze APK</button>
+    </div>
+
+    <div id="statusBanner" class="status" role="status" aria-live="polite">
+      <i id="statusIcon" class="bi bi-hourglass-split me-2"></i><span id="statusText"></span>
+    </div>
+
+    <div id="progressPanel" class="panel progress-panel" aria-live="polite">
+      <div class="progress-layout">
+        <div class="loader-ring" aria-hidden="true"><i class="bi bi-binoculars"></i></div>
+        <div>
+          <span class="eyebrow">Analysis in progress</span>
+          <div class="progress-title mt-1" id="progressTitle">Analyzing application</div>
+          <div class="progress-copy" id="progressCopy">The analyzer is processing the APK. No artificial percentage is shown because the current API does not expose analysis progress.</div>
+          <div id="uploadProgress" class="real-progress">
+            <div class="real-progress-top"><span>UPLOADING APK</span><span id="uploadPercent">0%</span></div>
+            <div class="real-progress-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="uploadFill" class="real-progress-fill"></div></div>
+          </div>
+          <div id="analysisIndeterminate" class="indeterminate mt-3" aria-label="Analysis in progress"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="emptyDetail" class="panel empty reveal">
+    <div class="empty-icon"><i class="bi bi-eye"></i></div>
+    <strong>No watch in progress</strong>
+    <p>Upload an APK above to begin. Your risk score, findings, and reports will appear here once the watch completes.</p>
+  </section>
+
+  <div id="results" class="results">
+    <section class="panel detail-head">
+      <div class="detail-top">
+        <div>
+          <span class="eyebrow">Watch complete</span>
+          <div id="appTitle" class="app-name mt-1">-</div>
+          <div id="appSubtitle" class="app-meta">-</div>
+        </div>
+        <div class="actions">
+          <a id="htmlReportLink" class="action-btn" target="_blank" rel="noopener"><i class="bi bi-file-earmark-code me-1"></i> HTML report</a>
+          <a id="pdfReportLink" class="action-btn"><i class="bi bi-file-earmark-pdf me-1"></i> Download PDF</a>
+        </div>
+      </div>
+
+      <div class="overview-grid">
+        <div class="score-card">
+          <div class="score-ring">
+            <canvas id="scoreRing" aria-label="Security risk score"></canvas>
+            <div class="score-center"><div id="scoreVal" class="score-number">-</div><div class="score-label">/ 100 risk</div></div>
+          </div>
+          <div id="ratingVal" class="rating">-</div>
+        </div>
+        <div>
+          <div class="stats-grid">
+            <div class="stat"><div id="statTotal" class="stat-num">0</div><div class="stat-label">Findings</div></div>
+            <div class="stat"><div id="statCritical" class="stat-num" style="color:var(--ember)">0</div><div class="stat-label">Critical</div></div>
+            <div class="stat"><div id="statHigh" class="stat-num" style="color:var(--beacon-deep)">0</div><div class="stat-label">High</div></div>
+            <div class="stat"><div id="statMedium" class="stat-num" style="color:var(--beacon)">0</div><div class="stat-label">Medium</div></div>
+            <div class="stat"><div id="statLow" class="stat-num" style="color:var(--dusk)">0</div><div class="stat-label">Low</div></div>
+          </div>
+          <div class="mini-chart"><canvas id="categoryChart" aria-label="Findings by security category"></canvas></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="modules" class="panel section">
+      <div class="section-head"><div class="section-title"><i class="bi bi-diagram-3"></i> Watch posts</div></div>
+      <div id="moduleGrid" class="module-grid"></div>
+    </section>
+
+    <section class="panel section">
+      <div class="section-head">
+        <div class="section-title"><i class="bi bi-bug"></i> Findings</div>
+        <div class="filters">
+          <select class="form-select form-select-sm" id="severityFilter" aria-label="Filter findings by severity">
+            <option value="">All severities</option><option>Critical</option><option>High</option><option>Medium</option><option>Low</option><option>Info</option>
+          </select>
+          <input class="form-control form-control-sm" id="findingsSearch" placeholder="Search findings..." aria-label="Search findings">
+        </div>
+      </div>
+      <div id="findingsList" class="findings-list"></div>
+    </section>
+
+    <section class="panel section">
+      <div class="section-head">
+        <div class="section-title"><i class="bi bi-file-earmark-lock2"></i> Security report</div>
+      </div>
+      <div class="mode-card d-flex flex-wrap align-items-center justify-content-between gap-3">
+        <div><div class="mode-main">Full scan report</div><div class="mode-desc">Open the HTML report or download the PDF report generated by the backend.</div></div>
+        <div class="actions"><a id="htmlReportLink2" class="action-btn" target="_blank" rel="noopener">View HTML</a><a id="pdfReportLink2" class="action-btn">Download PDF</a></div>
+      </div>
+    </section>
+  </div>
+
+  <section id="history" class="panel section reveal">
+    <div class="section-head">
+      <div class="section-title"><i class="bi bi-clock-history"></i> Logbook</div>
+      <div class="mode-desc">Past scans · newest first</div>
+    </div>
+    <div id="historyEmpty" class="empty" style="display:none">
+      <div class="empty-icon"><i class="bi bi-inbox"></i></div><strong>The logbook is empty</strong><p>Completed scans will appear here.</p>
+    </div>
+    <div id="historyTableWrap" class="history-wrap" style="display:none">
+      <table class="history">
+        <thead><tr><th>Application</th><th>Risk score</th><th>Rating</th><th>Scan type</th><th>Date</th><th>Action</th></tr></thead>
+        <tbody id="historyBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer class="site-foot">
+    <svg class="tower-mini" viewBox="0 0 64 64" fill="none">
+      <path d="M32 8 48 46H16Z" stroke="#8b9689" stroke-width="3" stroke-linejoin="round"/>
+      <circle cx="32" cy="15" r="4" fill="#f5a83c"/>
+    </svg>
+    <div>APKWatchtower — a quiet watch over every APK you ship.</div>
+  </footer>
+</div>
+</main>
+<div id="toast" class="toastish" role="status"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const dropzone = $('dropzone'), fileInput = $('fileInput'), analyzeBtn = $('analyzeBtn');
+const statusBanner = $('statusBanner'), progressPanel = $('progressPanel');
+let selectedFile = null, scoreRingChart, categoryChart, currentFindings = [];
+let xhrInFlight = null;
+
+const sevColors = {Critical:'#e35a34',High:'#d9821f',Medium:'#f5a83c',Low:'#5b8aa6',Info:'#8b9689'};
+const modules = [
+  ['bi-shield-check','Manifest watch','Permissions, exported components and application configuration.','manifest'],
+  ['bi-key','Secret watch','Hardcoded credentials, tokens and secret-like strings.','secrets'],
+  ['bi-globe2','Network watch','Cleartext traffic and Network Security Config checks.','network'],
+  ['bi-database','Storage watch','Local storage and database security heuristics.','storage'],
+  ['bi-journal-text','Logging watch','Sensitive information exposure through logging heuristics.','logging'],
+  ['bi-lock','Crypto watch','Weak cryptography and TLS validation heuristics.','crypto'],
+  ['bi-activity','Runtime watch','Optional runtime logcat secret detection.','dynamic']
+];
+
+function setStatus(kind, icon, text) {
+  statusBanner.className = 'status ' + kind;
+  $('statusIcon').className = 'bi ' + icon + ' me-2';
+  $('statusText').textContent = text;
+}
+function bytes(n) {
+  if (!Number.isFinite(n)) return '';
+  const u=['B','KB','MB','GB']; let i=0;
+  while(n>=1024 && i<u.length-1){n/=1024;i++}
+  return `${n.toFixed(i?1:0)} ${u[i]}`;
+}
+function toast(text) {
+  $('toast').textContent=text; $('toast').style.display='block';
+  clearTimeout(window._toast); window._toast=setTimeout(()=>{$('toast').style.display='none'},2200);
+}
+function resetFile() {
+  selectedFile=null; fileInput.value='';
+  $('fileReady').style.display='none'; analyzeBtn.disabled=true;
+}
+function onFileChosen(file) {
+  if (!file) return;
+  if (!file.name.toLowerCase().endsWith('.apk')) {
+    setStatus('err','bi-x-circle','Only .apk files are accepted.');
+    resetFile(); return;
+  }
+  selectedFile=file;
+  $('fileName').textContent=file.name;
+  $('fileSize').textContent=bytes(file.size);
+  $('fileReady').style.display='flex';
+  analyzeBtn.disabled=false;
+  setStatus('info','bi-check-circle','APK ready for analysis.');
+}
+['dragenter','dragover'].forEach(evt=>dropzone.addEventListener(evt,e=>{e.preventDefault();dropzone.classList.add('drag')}));
+['dragleave','drop'].forEach(evt=>dropzone.addEventListener(evt,e=>{e.preventDefault();dropzone.classList.remove('drag')}));
+dropzone.addEventListener('drop',e=>onFileChosen(e.dataTransfer.files[0]));
+fileInput.addEventListener('change',()=>onFileChosen(fileInput.files[0]));
+$('removeFile').addEventListener('click',resetFile);
+
+function setUploadingUI() {
+  progressPanel.style.display='block';
+  $('progressTitle').textContent='Uploading and analyzing application';
+  $('progressCopy').textContent='Upload progress below is the real browser upload progress. After upload completes, analysis remains indeterminate because the existing API returns only when the scan is finished.';
+  $('uploadProgress').style.display='block';
+  $('analysisIndeterminate').style.display='none';
+  $('uploadFill').style.width='0%'; $('uploadPercent').textContent='0%';
+}
+function setAnalysisUI() {
+  $('progressTitle').textContent='Analysis in progress';
+  $('progressCopy').textContent='The analyzer is processing the APK. The current API does not expose a scan percentage or stage stream, so no fake progress is displayed.';
+  $('uploadProgress').style.display='none';
+  $('analysisIndeterminate').style.display='block';
+}
+function finishProgress() { progressPanel.style.display='none'; }
+
+analyzeBtn.addEventListener('click',()=>{
+  if(!selectedFile || xhrInFlight) return;
+  analyzeBtn.disabled=true;
+  setStatus('info','bi-cloud-arrow-up','Uploading APK...');
+  setUploadingUI();
+
+  const form=new FormData();
+  form.append('file',selectedFile);
+  form.append('dynamic',$('dynamicToggle')?.checked || document.querySelector('input[name="analysisMode"]:checked').value==='dynamic');
+
+  const xhr=new XMLHttpRequest();
+  xhrInFlight=xhr;
+  xhr.open('POST','/api/scan');
+  xhr.responseType='json';
+
+  xhr.upload.addEventListener('progress',e=>{
+    if(e.lengthComputable){
+      const pct=Math.round((e.loaded/e.total)*100);
+      $('uploadFill').style.width=pct+'%'; $('uploadPercent').textContent=pct+'%';
+      document.querySelector('.real-progress-bar').setAttribute('aria-valuenow',pct);
+      setStatus('info','bi-cloud-arrow-up',`Uploading APK — ${pct}%`);
+    }
+  });
+  xhr.upload.addEventListener('load',()=>{
+    setAnalysisUI();
+    setStatus('info','bi-cpu','Upload complete. The watchtower is surveying the APK...');
+  });
+  xhr.addEventListener('load',async()=>{
+    xhrInFlight=null;
+    if(xhr.status<200 || xhr.status>=300){
+      let message=xhr.statusText;
+      try { message=xhr.response?.detail || message; } catch(_){}
+      finishProgress(); setStatus('err','bi-x-circle-fill','Analysis failed: '+message);
+      analyzeBtn.disabled=false; return;
+    }
+    const data=xhr.response;
+    finishProgress();
+    setStatus('ok','bi-check-circle-fill',`Watch complete — risk score ${data.risk_score} (${data.risk_rating}).`);
+    try { await loadScanDetail(data.scan_id); await loadHistory(); }
+    catch(err){ setStatus('err','bi-x-circle-fill','Results could not be loaded: '+err.message); }
+    analyzeBtn.disabled=false;
+  });
+  xhr.addEventListener('error',()=>{
+    xhrInFlight=null; finishProgress(); setStatus('err','bi-x-circle-fill','Network error while contacting the analyzer.');
+    analyzeBtn.disabled=false;
+  });
+  xhr.addEventListener('abort',()=>{
+    xhrInFlight=null; finishProgress(); setStatus('err','bi-x-circle-fill','Analysis request was cancelled.');
+    analyzeBtn.disabled=false;
+  });
+  xhr.send(form);
+});
+
+function ratingClass(r){return 'sev-'+(r||'Info')}
+function renderModules(findings){
+  const counts={};
+  findings.forEach(f=>{const c=(f.category||'').toLowerCase(); counts[c]=(counts[c]||0)+1});
+  $('moduleGrid').innerHTML=modules.map((m,i)=>{
+    let count=0;
+    Object.keys(counts).forEach(k=>{if(k.includes(m[3]) || (m[3]==='network'&&k.includes('nsc')) || (m[3]==='secrets'&&k.includes('secret'))) count+=counts[k]});
+    return `<div class="module"><span class="module-post">${String(i+1).padStart(2,'0')}</span><div class="module-icon"><i class="bi ${m[0]}"></i></div><div class="module-name">${m[1]}</div><div class="module-desc">${m[2]}</div><div class="module-count">${count} finding${count===1?'':'s'}</div></div>`;
+  }).join('');
+}
+function renderFindings(){
+  const order={Critical:0,High:1,Medium:2,Low:3,Info:4};
+  const filter=$('severityFilter').value, q=$('findingsSearch').value.trim().toLowerCase();
+  let rows=currentFindings.filter(f=>(!filter||f.severity===filter)&&(!q||`${f.title||''} ${f.description||''} ${f.category||''}`.toLowerCase().includes(q)));
+  rows.sort((a,b)=>(order[a.severity]??9)-(order[b.severity]??9));
+  if(!rows.length){
+    $('findingsList').innerHTML='<div class="empty"><div class="empty-icon"><i class="bi bi-search"></i></div><strong>No matching findings</strong><p>Try another severity or search term.</p></div>';
+    return;
+  }
+  $('findingsList').innerHTML=rows.map((f,i)=>{
+    const sev=f.severity||'Info';
+    return `<details class="finding" ${i===0?'open':''}>
+      <summary><span class="sev sev-${sev}">${sev}</span><div><div class="finding-title">${escapeHtml(f.title||'Untitled finding')}</div><div class="finding-cat">${escapeHtml(f.category||'Uncategorized')}${f.cwe?' · '+escapeHtml(f.cwe):''}</div></div><i class="bi bi-chevron-down finding-chevron"></i></summary>
+      <div class="finding-body">${escapeHtml(f.description||'No description returned.')}${f.evidence?`<div class="evidence">${escapeHtml(f.evidence)}</div>`:''}${f.recommendation?`<div class="fix"><strong>Recommendation:</strong> ${escapeHtml(f.recommendation)}</div>`:''}</div>
+    </details>`;
+  }).join('');
+}
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+}
+async function loadHistory(){
+  const res=await fetch('/api/scans'); if(!res.ok) throw new Error('Could not load scan history.');
+  const scans=await res.json(), body=$('historyBody'); body.innerHTML='';
+  $('historyEmpty').style.display=scans.length?'none':'block'; $('historyTableWrap').style.display=scans.length?'block':'none';
+  scans.forEach(s=>{
+    const tr=document.createElement('tr');
+    const type=s.dynamic_analysis_run?'Static + Dynamic':'Static';
+    tr.innerHTML=`<td><div class="app-cell">${escapeHtml(s.app_name||s.package_name||s.filename)}<small>${escapeHtml(s.package_name||'')}</small></div></td>
+      <td><strong>${s.risk_score}</strong></td><td><span class="risk-pill sev-${s.risk_rating}">${escapeHtml(s.risk_rating)}</span></td>
+      <td>${type}</td><td>${s.timestamp?new Date(s.timestamp).toLocaleString():'-'}</td>
+      <td><button class="delete-btn" data-id="${s.id}" aria-label="Delete scan"><i class="bi bi-trash3"></i></button></td>`;
+    tr.addEventListener('click',e=>{if(!e.target.closest('.delete-btn'))loadScanDetail(s.id)});
+    body.appendChild(tr);
+  });
+  body.querySelectorAll('.delete-btn').forEach(btn=>btn.addEventListener('click',async e=>{
+    e.stopPropagation();
+    if(!confirm('Delete this scan and its findings?')) return;
+    const res=await fetch(`/api/scans/${btn.dataset.id}`,{method:'DELETE'});
+    if(!res.ok){toast('Could not delete scan.');return}
+    toast('Scan deleted'); loadHistory();
+  }));
+}
+async function loadScanDetail(id){
+  const res=await fetch(`/api/scans/${id}`); if(!res.ok) throw new Error('Scan details unavailable.');
+  const data=await res.json(); currentFindings=Array.isArray(data.findings)?data.findings:[];
+  $('emptyDetail').style.display='none'; $('results').style.display='block';
+  $('appTitle').textContent=data.app_name||data.package_name||data.filename||'Unknown application';
+  $('appSubtitle').textContent=`${data.package_name||''} · v${data.version_name||'?'} · min SDK ${data.min_sdk??'?'} / target SDK ${data.target_sdk??'?'} · ${data.dynamic_analysis_run?'Static + Dynamic':'Static'}`;
+  $('scoreVal').textContent=data.risk_score;
+  $('ratingVal').textContent=data.risk_rating;
+  $('ratingVal').className='rating '+ratingClass(data.risk_rating);
+  const htmlUrl=`/api/scans/${id}/report.html`, pdfUrl=`/api/scans/${id}/report.pdf`;
+  $('htmlReportLink').href=htmlUrl; $('pdfReportLink').href=pdfUrl; $('htmlReportLink2').href=htmlUrl; $('pdfReportLink2').href=pdfUrl;
+
+  const sevCounts={}; const catCounts={};
+  currentFindings.forEach(f=>{sevCounts[f.severity]=(sevCounts[f.severity]||0)+1;catCounts[f.category]=(catCounts[f.category]||0)+1});
+  $('statTotal').textContent=currentFindings.length;$('statCritical').textContent=sevCounts.Critical||0;$('statHigh').textContent=sevCounts.High||0;$('statMedium').textContent=sevCounts.Medium||0;$('statLow').textContent=sevCounts.Low||0;
+
+  const ringColor=sevColors[data.risk_rating]||'#f5a83c';
+  if(scoreRingChart)scoreRingChart.destroy();
+  scoreRingChart=new Chart($('scoreRing'),{type:'doughnut',data:{datasets:[{data:[Number(data.risk_score)||0,Math.max(0,100-(Number(data.risk_score)||0))],backgroundColor:[ringColor,'#1c2921'],borderWidth:0}]},options:{cutout:'78%',plugins:{legend:{display:false},tooltip:{enabled:false}},animation:{duration:650}}});
+  if(categoryChart)categoryChart.destroy();
+  categoryChart=new Chart($('categoryChart'),{type:'bar',data:{labels:Object.keys(catCounts),datasets:[{label:'Findings',data:Object.values(catCounts),backgroundColor:'rgba(245,168,60,.75)',borderRadius:5,maxBarThickness:30}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#8b9689',font:{size:9}},grid:{display:false}},y:{beginAtZero:true,ticks:{color:'#8b9689',stepSize:1,font:{size:9}},grid:{color:'rgba(219,199,148,.08)'}}}}});
+  renderModules(currentFindings); renderFindings();
+  $('results').scrollIntoView({behavior:'smooth',block:'start'});
+}
+$('severityFilter').addEventListener('change',renderFindings); $('findingsSearch').addEventListener('input',renderFindings);
+loadHistory().catch(()=>setStatus('err','bi-exclamation-circle','Could not load scan history.'));
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape' && xhrInFlight){ xhrInFlight.abort(); }
+});
+
+/* scroll-reveal for section panels */
+if('IntersectionObserver' in window){
+  const io=new IntersectionObserver((entries)=>{
+    entries.forEach(en=>{ if(en.isIntersecting){ en.target.classList.add('in'); io.unobserve(en.target); } });
+  },{threshold:.14});
+  document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+} else {
+  document.querySelectorAll('.reveal').forEach(el=>el.classList.add('in'));
+}
+
+/* light the signal-timeline lamps in sequence, looping softly */
+(function signalLoop(){
+  const steps=Array.from(document.querySelectorAll('#signalSteps .signal-step'));
+  if(!steps.length) return;
+  let i=0;
+  const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(reduced){ steps.forEach(s=>s.classList.add('lit')); return; }
+  setInterval(()=>{
+    steps.forEach(s=>s.classList.remove('lit'));
+    steps[i].classList.add('lit');
+    i=(i+1)%steps.length;
+  },1400);
+  steps[0].classList.add('lit');
+})();
+</script>
+</body>
+</html>

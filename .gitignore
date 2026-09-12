@@ -1,0 +1,11 @@
+@"
+venv/
+__pycache__/
+*.pyc
+analyzer.db
+*.db
+uploads/
+uploaded_apks/
+*.apk
+.env
+"@ | Set-Content .gitignore

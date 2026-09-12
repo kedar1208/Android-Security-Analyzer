@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>APKWatchtower Report - {{ scan.app_name or scan.package_name }}</title>
+<style>
+  :root {
+    --critical: #b3421f; --high: #c17a1e; --medium: #a68326;
+    --low: #386a82; --info: #6b7280; --beacon: #e08a1e;
+  }
+  body { font-family: "Segoe UI", Arial, sans-serif; margin: 0; color: #1f2933; background:#f4f5f7; }
+  header { background: #14201c; color: #efe8d8; padding: 28px 36px; border-bottom: 3px solid var(--beacon); }
+  header h1 { margin: 0 0 4px; font-size: 22px; letter-spacing: -.01em; }
+  header .meta { color: #93998c; font-size: 13px; }
+  .wrap { max-width: 1000px; margin: 24px auto; padding: 0 20px 60px; }
+  .cards { width: 100%; border-collapse: separate; border-spacing: 8px 0; margin-bottom: 28px; }
+  .cards td { padding: 0; }
+  .card { background: #fff; border-radius: 8px; padding: 18px 22px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+  .card .label { font-size: 12px; text-transform: uppercase; color: #6b7280; letter-spacing: .04em; }
+  .card .value { font-size: 28px; font-weight: 700; margin-top: 4px; }
+  .rating-Critical { color: var(--critical); }
+  .rating-High { color: var(--high); }
+  .rating-Medium { color: var(--medium); }
+  .rating-Low { color: var(--low); }
+  .rating-Info { color: var(--info); }
+  section { background: #fff; border-radius: 8px; padding: 20px 24px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+  section h2 { margin-top: 0; font-size: 17px; border-bottom: 1px solid #e5e7eb; padding-bottom: 10px;}
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #eef0f2; vertical-align: top; }
+  th { color: #6b7280; font-weight: 600; font-size: 11px; text-transform: uppercase; }
+  .badge { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; color: #fff; }
+  .badge-Critical { background: var(--critical); }
+  .badge-High { background: var(--high); }
+  .badge-Medium { background: var(--medium); }
+  .badge-Low { background: var(--low); }
+  .badge-Info { background: var(--info); }
+  .evidence { font-family: "Consolas", monospace; font-size: 11.5px; background: #f8f9fb; padding: 6px 8px; border-radius: 4px; white-space: pre-wrap; word-break: break-word; color: #374151; }
+  .cat-group { margin-bottom: 22px; }
+  .cat-group h3 { font-size: 14px; margin-bottom: 8px; color: #111827; }
+  footer { text-align: center; color: #9ca3af; font-size: 12px; padding: 20px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>APKWatchtower &middot; Security Analysis Report</h1>
+  <div class="meta">
+    {{ scan.app_name or "Unknown app" }} &middot; {{ scan.package_name }} &middot;
+    v{{ scan.version_name }} &middot; min SDK {{ scan.min_sdk }} / target SDK {{ scan.target_sdk }}
+    <br>Scanned: {{ scan.timestamp }} &middot; File: {{ scan.filename }}
+    {% if scan.sha256 %}<br>SHA-256: {{ scan.sha256 }}{% endif %}
+  </div>
+</header>
+<div class="wrap">
+
+  <table class="cards"><tr>
+    <td width="25%">
+      <div class="card">
+        <div class="label">Risk Score</div>
+        <div class="value rating-{{ risk.rating }}">{{ risk.score }} / 100</div>
+      </div>
+    </td>
+    <td width="25%">
+      <div class="card">
+        <div class="label">Rating</div>
+        <div class="value rating-{{ risk.rating }}">{{ risk.rating }}</div>
+      </div>
+    </td>
+    <td width="25%">
+      <div class="card">
+        <div class="label">Total Findings</div>
+        <div class="value">{{ risk.total_findings }}</div>
+      </div>
+    </td>
+    <td width="25%">
+      <div class="card">
+        <div class="label">Critical / High</div>
+        <div class="value rating-Critical">
+          {{ risk.by_severity.get("Critical", 0) }} / {{ risk.by_severity.get("High", 0) }}
+        </div>
+      </div>
+    </td>
+  </tr></table>
+
+  <section>
+    <h2>Findings by Category</h2>
+    {% for category, items in findings_by_category.items() %}
+    <div class="cat-group">
+      <h3>{{ category | capitalize }} ({{ items | length }})</h3>
+      <table>
+        <thead>
+          <tr><th style="width:90px;">Severity</th><th>Title</th><th>Description</th><th>Evidence</th><th>CWE</th></tr>
+        </thead>
+        <tbody>
+          {% for f in items %}
+          <tr>
+            <td><span class="badge badge-{{ f.severity }}">{{ f.severity }}</span></td>
+            <td><strong>{{ f.title }}</strong></td>
+            <td>{{ f.description }}
+              {% if f.recommendation %}<br><em style="color:#059669;">Fix: {{ f.recommendation }}</em>{% endif %}
+            </td>
+            <td>{% if f.evidence %}<div class="evidence">{{ f.evidence }}</div>{% endif %}</td>
+            <td>{{ f.cwe or "" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endfor %}
+  </section>
+
+  {% if exported_components %}
+  <section>
+    <h2>Exported Component Inventory</h2>
+    {% for tag, items in exported_components.items() %}
+      {% if items %}
+      <div class="cat-group">
+        <h3>{{ tag }} ({{ items | length }})</h3>
+        <table>
+          <thead><tr><th>Name</th><th>Reason</th><th>Permission</th></tr></thead>
+          <tbody>
+          {% for c in items %}
+            <tr><td>{{ c.name }}</td><td>{{ c.reason }}</td><td>{{ c.permission or "none" }}</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
+    {% endfor %}
+  </section>
+  {% endif %}
+
+</div>
+<footer>Generated by APKWatchtower &middot; static{% if scan.dynamic_analysis_run %} + dynamic{% endif %} analysis</footer>
+</body>
+</html>
